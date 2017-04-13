@@ -1033,6 +1033,7 @@ private[spark] class BlockManager(
       data: () => Either[Array[Any], ByteBuffer]): Option[BlockStatus] = {
 
     logInfo(s"Dropping block $blockId from memory")
+    //blockInfo为TimeStampedHashMap[BlockId, BlockInfo]类型，使用时检查是否存在要迁移的blockId，如果存在，从blockInfo获取Block的StorageLevel
     val info = blockInfo.get(blockId).orNull
 
     // If the block has not already been dropped
@@ -1053,6 +1054,7 @@ private[spark] class BlockManager(
           val level = info.level
 
           // Drop to disk, if storage level requires
+          //如果StorageLevel允许存入硬盘，并且DiskStore中不存在此文件，那么调用DiskStore的putArray或者putBytes方法，将此Block存入硬盘
           if (level.useDisk && !diskStore.contains(blockId)) {
             logInfo(s"Writing block $blockId to disk")
             data() match {
@@ -1067,6 +1069,7 @@ private[spark] class BlockManager(
           // Actually drop from memory store
           val droppedMemorySize =
             if (memoryStore.contains(blockId)) memoryStore.getSize(blockId) else 0L
+          //从memoryStore中清除此BlockId对应的Block
           val blockIsRemoved = memoryStore.remove(blockId)
           if (blockIsRemoved) {
             blockIsUpdated = true
@@ -1074,12 +1077,15 @@ private[spark] class BlockManager(
             logWarning(s"Block $blockId could not be dropped from memory as it does not exist")
           }
 
+          //使用getCurrentBlockStatus方法获取Block的最新状态
           val status = getCurrentBlockStatus(blockId, info)
+          //当Block的tellMaster属性为true，则调用reportBlockStatus方法给BlockManagerMasterEndpoint报告状态
           if (info.tellMaster) {
             reportBlockStatus(blockId, info, status, droppedMemorySize)
           }
           if (!level.useDisk) {
             // The block is completely gone from this node;forget it so we can put() it again later.
+            //从blockInfo中清除此BlockId，并返回Block的状态
             blockInfo.remove(blockId)
           }
           if (blockIsUpdated) {

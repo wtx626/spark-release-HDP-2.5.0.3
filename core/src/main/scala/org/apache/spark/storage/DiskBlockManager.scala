@@ -36,8 +36,9 @@ import org.apache.spark.util.{ShutdownHookManager, Utils}
 private[spark] class DiskBlockManager(blockManager: BlockManager, conf: SparkConf)
   extends Logging {
 
-  private[spark]
-  val subDirsPerLocalDir = blockManager.conf.getInt("spark.diskStore.subDirectories", 64)
+  //每个本地目录中二级目录的个数，默认为64
+  //二级目录用于对文件进行散列存储，散列存储可以使所有文件都随机存放，写入或删除文件更方便，存取速度快，节省空间
+  private[spark] val subDirsPerLocalDir = blockManager.conf.getInt("spark.diskStore.subDirectories", 64)
 
   /* Create one local directory for each path mentioned in spark.local.dir; then, inside this
    * directory, create multiple subdirectories that we will hash files into, in order to avoid
@@ -51,6 +52,7 @@ private[spark] class DiskBlockManager(blockManager: BlockManager, conf: SparkCon
   // of subDirs(i) is protected by the lock of subDirs(i)
   private val subDirs = Array.fill(localDirs.length)(new Array[File](subDirsPerLocalDir))
 
+  //添加运行时环境结束时的钩子，用于在进程关闭时创建线程，通过调用DiskBlockManager.stop方法，清除一些临时目录
   private val shutdownHook = addShutdownHook()
 
   /** Looks up a file by hashing it into one of our local subdirectories. */
@@ -58,11 +60,15 @@ private[spark] class DiskBlockManager(blockManager: BlockManager, conf: SparkCon
   // org.apache.spark.network.shuffle.ExternalShuffleBlockResolver#getFile().
   def getFile(filename: String): File = {
     // Figure out which local directory it hashes to, and which subdirectory in that
+    //根据文件名blockId.name计算哈希值
     val hash = Utils.nonNegativeHash(filename)
+    //根据哈希值与本地文件一级目录的总数求余数，记为dirId
     val dirId = hash % localDirs.length
+    //根据哈希值与本地文件一级目录的总数求商，此商与二级目录的数据在求余数，记为subDirId
     val subDirId = (hash / localDirs.length) % subDirsPerLocalDir
 
     // Create the subdirectory if it doesn't already exist
+    //如果dirId/subDirId目录存在，则获取dirId/subDirId目录下的文件，否则新建dirId/subDirId目录
     val subDir = subDirs(dirId).synchronized {
       val old = subDirs(dirId)(subDirId)
       if (old != null) {
@@ -107,6 +113,9 @@ private[spark] class DiskBlockManager(blockManager: BlockManager, conf: SparkCon
   }
 
   /** Produces a unique block id and File suitable for storing local intermediate results. */
+  //当shuffleMapTask运行结束需要把中间结果临时保存，此时调用createTempLocalBlock方法创建临时Block
+  //返回TempLocalBlockId和其文件的对偶
+  //TempLocalBlockId的生成规则：“temp_shuffle_”后加上UUID字符串
   def createTempLocalBlock(): (TempLocalBlockId, File) = {
     var blockId = new TempLocalBlockId(UUID.randomUUID())
     while (getFile(blockId).exists()) {

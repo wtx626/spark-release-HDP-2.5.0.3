@@ -93,15 +93,21 @@ public class TransportClientFactory implements Closeable {
       List<TransportClientBootstrap> clientBootstraps) {
     this.context = Preconditions.checkNotNull(context);
     this.conf = context.getConf();
+    //缓存客户端列表
     this.clientBootstraps = Lists.newArrayList(Preconditions.checkNotNull(clientBootstraps));
+    //缓存客户端连接
     this.connectionPool = new ConcurrentHashMap<SocketAddress, ClientPool>();
+    //节点之间去数据的连接数，可以使用属性spark.shuffle.io.numConnectionsPerPeer来设置，默认为1
     this.numConnectionsPerPeer = conf.numConnectionsPerPeer();
     this.rand = new Random();
 
     IOMode ioMode = IOMode.valueOf(conf.ioMode());
+    //客户端channel被创建时使用的类，spark.shuffle.io.mode来配置，默认为NioSocketChannel
     this.socketChannelClass = NettyUtils.getClientChannelClass(ioMode);
     // TODO: Make thread pool name configurable.
+    //根据Netty规范，客户端只有Work组，所以此处创建workerGroup，实际上是NioEventLoopGroup
     this.workerGroup = NettyUtils.createEventLoop(ioMode, conf.clientThreads(), "shuffle-client");
+    //汇集ByteBuf但对本地线程缓存禁用的分配器
     this.pooledAllocator = NettyUtils.createPooledByteBufAllocator(
       conf.preferDirectBufs(), false /* allowCache */, conf.clientThreads());
   }

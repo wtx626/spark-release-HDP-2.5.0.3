@@ -60,8 +60,11 @@ class NettyBlockTransferService(conf: SparkConf, securityManager: SecurityManage
       clientBootstrap = Some(new SaslClientBootstrap(transportConf, conf.getAppId, securityManager,
         securityManager.isSaslEncryptionEnabled()))
     }
+    //创建TransportContext
     transportContext = new TransportContext(transportConf, rpcHandler)
+    //创建RPC客户端工厂
     clientFactory = transportContext.createClientFactory(clientBootstrap.toSeq.asJava)
+    //创建Netty服务器TransportServer，端口由spark.blockManager.port控制
     server = createServer(serverBootstrap.toList)
     appId = conf.getAppId
     logInfo("Server created on " + server.getPort)
@@ -120,14 +123,17 @@ class NettyBlockTransferService(conf: SparkConf, securityManager: SecurityManage
       blockData: ManagedBuffer,
       level: StorageLevel): Future[Unit] = {
     val result = Promise[Unit]()
+    //创建Netty服务客户端
     val client = clientFactory.createClient(hostname, port)
 
     // StorageLevel is serialized as bytes using our JavaSerializer. Everything else is encoded
     // using our binary protocol.
+    //将Block的存储级别StorageLevel序列化
     val levelBytes = serializer.newInstance().serialize(level).array()
 
     // Convert or copy nio buffer into array in order to serialize it.
     val nioBuffer = blockData.nioByteBuffer()
+    //将Block中的ByteBuffer转化为数组，便于序列化
     val array = if (nioBuffer.hasArray) {
       nioBuffer.array()
     } else {
@@ -135,7 +141,7 @@ class NettyBlockTransferService(conf: SparkConf, securityManager: SecurityManage
       nioBuffer.get(data)
       data
     }
-
+    //调用Netty客户端的snedRpc方法将字节数组上传，回调RpcResponseCallback
     client.sendRpc(new UploadBlock(appId, execId, blockId.toString, levelBytes, array).toByteBuffer,
       new RpcResponseCallback {
         override def onSuccess(response: ByteBuffer): Unit = {

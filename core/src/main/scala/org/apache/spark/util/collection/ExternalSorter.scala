@@ -653,8 +653,7 @@ private[spark] class ExternalSorter[K, V, C](
       val collection = if (aggregator.isDefined) map else buffer
       val it = collection.destructiveSortedWritablePartitionedIterator(comparator)
       while (it.hasNext) {
-        val writer = blockManager.getDiskWriter(blockId, outputFile, serInstance, fileBufferSize,
-          context.taskMetrics.shuffleWriteMetrics.get)
+        val writer = blockManager.getDiskWriter(blockId, outputFile, serInstance, fileBufferSize, context.taskMetrics.shuffleWriteMetrics.get)
         val partitionId = it.nextPartition()
         while (it.hasNext && it.nextPartition() == partitionId) {//把同一个分区的记录写到一块 并返回该blockId中该partitionId的长度
           it.writeNext(writer)

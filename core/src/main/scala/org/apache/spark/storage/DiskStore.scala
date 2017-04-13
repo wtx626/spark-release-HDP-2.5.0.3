@@ -75,9 +75,11 @@ private[spark] class DiskStore(blockManager: BlockManager, diskManager: DiskBloc
     logDebug(s"Attempting to write values for block $blockId")
     val startTime = System.currentTimeMillis
     val file = diskManager.getFile(blockId)
+    //使用DiskBlockManager的getFile获取Block文件，并封装为FileOutputStream
     val outputStream = new FileOutputStream(file)
     try {
       Utils.tryWithSafeFinally {
+        //调用BlockManager的dataSerializeStream方法，将FileOutputStream序列化并压缩
         blockManager.dataSerializeStream(blockId, outputStream, values)
       } {
         // Close outputStream here because it should be closed before file is deleted.
@@ -99,6 +101,7 @@ private[spark] class DiskStore(blockManager: BlockManager, diskManager: DiskBloc
     logDebug("Block %s stored as %s file on disk in %d ms".format(
       file.getName, Utils.bytesToString(length), timeTaken))
 
+    //如果需要返回写入的数据，则将写入文件使用getBytes读取为ByteBuffer，与文件的长度一并封装到PutResult中并返回，否则只返回文件长度
     if (returnValues) {
       // Return a byte buffer for the contents of the file
       val buffer = getBytes(blockId).get
@@ -131,6 +134,7 @@ private[spark] class DiskStore(blockManager: BlockManager, diskManager: DiskBloc
     }
   }
 
+  //getBytes通过DiskBlockManager的getFile方法获取文件，然后使用NIO将文件读取到ByteBuffer
   override def getBytes(blockId: BlockId): Option[ByteBuffer] = {
     val file = diskManager.getFile(blockId.name)
     getBytes(file, 0, file.length)

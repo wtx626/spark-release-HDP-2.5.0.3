@@ -72,9 +72,13 @@ public class TransportContext {
       TransportConf conf,
       RpcHandler rpcHandler,
       boolean closeIdleConnections) {
+    //主要控制Netty框架提供的shuffle的I/O交互的客户端和服务器线程数量
     this.conf = conf;
+    //负责shuffle的I/O服务端在接收到客户端RPC请求后，提供打开Block或者上传Block的RPC处理，此处即为NettyBlockRpcServer
     this.rpcHandler = rpcHandler;
+    //在shuffle的I/O客户端对消息进行编码
     this.encoder = new MessageEncoder();
+    //在shuffle的I/O服务端对客户端传来的ByteBuf进行解析，防止丢包和解析出错
     this.decoder = new MessageDecoder();
     this.closeIdleConnections = closeIdleConnections;
   }

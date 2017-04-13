@@ -45,6 +45,7 @@ private[spark] class MemoryStore(blockManager: BlockManager, memoryManager: Memo
 
   // A mapping from taskAttemptId to amount of memory used for unrolling a block (in bytes)
   // All accesses of this map are assumed to have manually synchronized on `memoryManager`
+  //当前Driver或者Executor中所有线程展开的Block都存入此Map中，key为线程Id，value为线程展开的所有块的内存大小之和
   private val unrollMemoryMap = mutable.HashMap[Long, Long]()
   // Same as `unrollMemoryMap`, but for pending unroll memory as defined below.
   // Pending unroll memory refers to the intermediate memory occupied by a task
@@ -56,10 +57,12 @@ private[spark] class MemoryStore(blockManager: BlockManager, memoryManager: Memo
   private val pendingUnrollMemoryMap = mutable.HashMap[Long, Long]()
 
   // Initial memory to request before unrolling any block
+  //unrollMemoryThreshold当前Driver或者Executor最多展开的Block所占用的内存，由spark.storage.unrollMemoryThreshold控制
   private val unrollMemoryThreshold: Long =
     conf.getLong("spark.storage.unrollMemoryThreshold", 1024 * 1024)
 
   /** Total amount of memory available for storage, in bytes. */
+  //当前Driver或者Executor的最大内存
   private def maxMemory: Long = memoryManager.maxStorageMemory
 
   if (maxMemory < unrollMemoryThreshold) {
@@ -71,6 +74,7 @@ private[spark] class MemoryStore(blockManager: BlockManager, memoryManager: Memo
   logInfo("MemoryStore started with capacity %s".format(Utils.bytesToString(maxMemory)))
 
   /** Total storage memory used including unroll memory, in bytes. */
+  //当前Driver或者Executor已经使用的内存
   private def memoryUsed: Long = memoryManager.storageMemoryUsed
 
   /**
@@ -87,6 +91,7 @@ private[spark] class MemoryStore(blockManager: BlockManager, memoryManager: Memo
     }
   }
 
+  //如果Block可以被序列化，那么对其序列化，然后调用putIterator；否则调用tryToPut方法
   override def putBytes(blockId: BlockId, _bytes: ByteBuffer, level: StorageLevel): PutResult = {
     // Work on a duplicate - since the original input might be used elsewhere.
     val bytes = _bytes.duplicate()
@@ -166,13 +171,16 @@ private[spark] class MemoryStore(blockManager: BlockManager, memoryManager: Memo
       returnValues: Boolean,
       allowPersistToDisk: Boolean): PutResult = {
     val droppedBlocks = new ArrayBuffer[(BlockId, BlockStatus)]
+    //调用unrollSafely将块在内存中展开
     val unrolledValues = unrollSafely(blockId, values, droppedBlocks)
     unrolledValues match {
+        //Left类型 说明内存足够并调用putArray写入内存
       case Left(arrayValues) =>
         // Values are fully unrolled in memory, so store them as an array
         val res = putArray(blockId, arrayValues, level, returnValues)
         droppedBlocks ++= res.droppedBlocks
         PutResult(res.size, res.data, droppedBlocks)
+        //Right类型 说明内存不足并写入硬盘或者放弃
       case Right(iteratorValues) =>
         // Not enough space to unroll this block; drop to disk if applicable
         if (level.useDisk && allowPersistToDisk) {
@@ -387,6 +395,7 @@ private[spark] class MemoryStore(blockManager: BlockManager, memoryManager: Memo
       val enoughMemory = memoryManager.acquireStorageMemory(blockId, size, droppedBlocks)
       if (enoughMemory) {
         // We acquired enough memory for the block, so go ahead and put it
+        //如果内存充足，创建MemoryEntry对象，并将此对象与其blockId放入entries，currentMemory会上浮估算的大小size
         val entry = new MemoryEntry(value(), size, deserialized)
         entries.synchronized {
           entries.put(blockId, entry)

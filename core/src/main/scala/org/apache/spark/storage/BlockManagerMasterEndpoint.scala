@@ -43,12 +43,15 @@ class BlockManagerMasterEndpoint(
   extends ThreadSafeRpcEndpoint with Logging {
 
   // Mapping from block manager id to the block manager's information.
+  //blockManagerInfo缓存所有的BlockManagerId及其BlockManager的信息
   private val blockManagerInfo = new mutable.HashMap[BlockManagerId, BlockManagerInfo]
 
   // Mapping from executor ID to block manager ID.
+  //缓存executorId与其拥有的BlockManagerId之间的映射关系
   private val blockManagerIdByExecutor = new mutable.HashMap[String, BlockManagerId]
 
   // Mapping from block id to the set of block managers that have the block.
+  //缓存Block与BlockManagerId直接的映射关系
   private val blockLocations = new JHashMap[BlockId, mutable.HashSet[BlockManagerId]]
 
   private val askThreadPool = ThreadUtils.newDaemonCachedThreadPool("block-manager-ask-thread-pool")
@@ -302,8 +305,11 @@ class BlockManagerMasterEndpoint(
 
   private def register(id: BlockManagerId, maxMemSize: Long, slaveEndpoint: RpcEndpointRef) {
     val time = System.currentTimeMillis()
+    //确保blockManagerInfo持有消息中的BlockManagerId及其对应信息
     if (!blockManagerInfo.contains(id)) {
+      //确保一个Executor只有一个BlockManagerId
       blockManagerIdByExecutor.get(id.executorId) match {
+          //旧的BlockManagerId会被移除
         case Some(oldId) =>
           // A block manager of the same executor already exists, so remove it (assumed dead)
           logError("Got two different block manager registrations on same executor - "
@@ -319,6 +325,7 @@ class BlockManagerMasterEndpoint(
       blockManagerInfo(id) = new BlockManagerInfo(
         id, System.currentTimeMillis(), maxMemSize, slaveEndpoint)
     }
+    //最后向listenerBus推送一个SparkListenerBlockManagerAdded消息
     listenerBus.post(SparkListenerBlockManagerAdded(time, id, maxMemSize))
   }
 
