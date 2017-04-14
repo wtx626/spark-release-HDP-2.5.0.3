@@ -75,8 +75,10 @@ private[spark] trait SizeTracker {
    * Take a new sample of the current collection's size.
    */
   private def takeSample(): Unit = {
+    //SizeEstimator.estimate是用来计算存储当前对象所需的内存空间的，将采样的数据加入样本中
     samples.enqueue(Sample(SizeEstimator.estimate(this), numUpdates))
     // Only use the last two samples to extrapolate
+    // 样本中仅保存上一次更新的存储当前对象所需的内存空间和最后一次更新的存储当前对象所需的内存空间，如果大于两个样本数据，则删除最前面的样本数据
     if (samples.size > 2) {
       samples.dequeue()
     }
@@ -86,7 +88,9 @@ private[spark] trait SizeTracker {
       // If fewer than 2 samples, assume no change
       case _ => 0
     }
+    //每一次在前面提到的Map中添加一个对象需要消耗多少内存
     bytesPerUpdate = math.max(0, bytesDelta)
+    //计算下次取样的时 map更新的次数
     nextSampleNum = math.ceil(numUpdates * SAMPLE_GROWTH_RATE).toLong
   }
 

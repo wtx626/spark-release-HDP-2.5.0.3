@@ -48,7 +48,9 @@ private[spark] trait WritablePartitionedPairCollection[K, V] {
    */
   def destructiveSortedWritablePartitionedIterator(keyComparator: Option[Comparator[K]])
     : WritablePartitionedIterator = {
+    // 这里的partitionedDestructiveSortedIterator会根据是map或者buffer有不同的实现
     val it = partitionedDestructiveSortedIterator(keyComparator)
+    // 最后返回的是WritablePartitionedIterator，上面进行写操作的时候就是调用该迭代器中的writeNext方法
     new WritablePartitionedIterator {
       private[this] var cur = if (it.hasNext) it.next() else null
 
@@ -78,6 +80,7 @@ private[spark] object WritablePartitionedPairCollection {
    * A comparator for (Int, K) pairs that orders them both by their partition ID and a key ordering.
    */
   def partitionKeyComparator[K](keyComparator: Comparator[K]): Comparator[(Int, K)] = {
+    //比较器按照先分区后key
     new Comparator[(Int, K)] {
       override def compare(a: (Int, K), b: (Int, K)): Int = {
         val partitionDiff = a._1 - b._1

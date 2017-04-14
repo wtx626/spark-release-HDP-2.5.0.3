@@ -132,6 +132,9 @@ class AppendOnlyMap[K, V](initialCapacity: Int = 64)
   def changeValue(key: K, updateFunc: (Boolean, V) => V): V = {
     assert(!destroyed, destructionMessage)
     val k = key.asInstanceOf[AnyRef]
+    //如果传入的key为空值，队列自动增加长度，
+    // 这里的设计很巧妙：因为队列自动增加，就肯定会多出一个值，如果你不给它赋值的话，它就为null，
+    // 但是这个值又不占队列中具体的位置，只要在最后的时候保留一个没有赋值的位置即可。
     if (k.eq(null)) {
       if (!haveNullValue) {
         incrementSize()
@@ -143,18 +146,23 @@ class AppendOnlyMap[K, V](initialCapacity: Int = 64)
     var pos = rehash(k.hashCode) & mask
     var i = 1
     while (true) {
+      //data是一个数组，用来同时存储key和value：key0, value0, key1, value1, key2, value2, etc.
+      // 即2 * pos上存储的是key的值，2 * pos + 1上存储的是value的值
       val curKey = data(2 * pos)
       if (k.eq(curKey) || k.equals(curKey)) {
+        //如果有相同的值的话，则根据updateFunc更新这个key对应的value
         val newValue = updateFunc(true, data(2 * pos + 1).asInstanceOf[V])
         data(2 * pos + 1) = newValue.asInstanceOf[AnyRef]
         return newValue
       } else if (curKey.eq(null)) {
+        //如果key不存在就将该key和对应的value添加到data这个数组中
         val newValue = updateFunc(false, null.asInstanceOf[V])
         data(2 * pos) = k
         data(2 * pos + 1) = newValue.asInstanceOf[AnyRef]
         incrementSize()
         return newValue
       } else {
+        //如果pos和其它的key重合，则继续计算其位置
         val delta = i
         pos = (pos + delta) & mask
         i += 1
@@ -264,6 +272,7 @@ class AppendOnlyMap[K, V](initialCapacity: Int = 64)
   def destructiveSortedIterator(keyComparator: Comparator[K]): Iterator[(K, V)] = {
     destroyed = true
     // Pack KV pairs into the front of the underlying array
+    //首先将原来map中的数据摧毁，其实也就是把key的非null值对应的数据 移到data数组的前面
     var keyIndex, newIndex = 0
     while (keyIndex < capacity) {
       if (data(2 * keyIndex) != null) {
@@ -275,8 +284,10 @@ class AppendOnlyMap[K, V](initialCapacity: Int = 64)
     }
     assert(curSize == newIndex + (if (haveNullValue) 1 else 0))
 
+    //然后在对这个map进行排序
     new Sorter(new KVArraySortDataFormat[K, AnyRef]).sort(data, 0, newIndex, keyComparator)
 
+    //最后创建一个Iterator来获取它的值
     new Iterator[(K, V)] {
       var i = 0
       var nullValueReady = haveNullValue

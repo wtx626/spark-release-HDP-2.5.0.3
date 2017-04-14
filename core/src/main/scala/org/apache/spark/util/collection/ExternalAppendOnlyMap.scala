@@ -180,8 +180,10 @@ class ExternalAppendOnlyMap[K, V, C](
    * Sort the existing contents of the in-memory map and spill them to a temporary file on disk.
    */
   override protected[this] def spill(collection: SizeTracker): Unit = {
+    //创建临时的Block，和临时的file
     val (blockId, file) = diskBlockManager.createTempLocalBlock()
     curWriteMetrics = new ShuffleWriteMetrics()
+    //创建一个DiskWriter
     var writer = blockManager.getDiskWriter(blockId, file, ser, fileBufferSize, curWriteMetrics)
     var objectsWritten = 0
 
@@ -200,12 +202,14 @@ class ExternalAppendOnlyMap[K, V, C](
 
     var success = false
     try {
+      //把数据重新按key值中的partitionId来排序，这里的key是一个tuple (partitionId,K)
       val it = currentMap.destructiveSortedIterator(keyComparator)
       while (it.hasNext) {
         val kv = it.next()
         writer.write(kv._1, kv._2)
         objectsWritten += 1
 
+        //当写的对象达到一定个数时，就spill到另一个文件中
         if (objectsWritten == serializerBatchSize) {
           flush()
           curWriteMetrics = new ShuffleWriteMetrics()
@@ -235,6 +239,7 @@ class ExternalAppendOnlyMap[K, V, C](
       }
     }
 
+    //最终把写的文件插入到spills中
     spilledMaps.append(new DiskMapIterator(file, blockId, batchSizes))
   }
 

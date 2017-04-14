@@ -30,6 +30,7 @@ private[spark] class SizeTrackingAppendOnlyMap[K, V]
 
   override def changeValue(key: K, updateFunc: (Boolean, V) => V): V = {
     val newValue = super.changeValue(key, updateFunc)
+    //更新数据的更新次数，如果更新的次数达到nextSampleNum，就执行采样操作，主要用来评估内存的使用情况。
     super.afterUpdate()
     newValue
   }

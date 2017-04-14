@@ -75,21 +75,27 @@ private[spark] trait Spillable[C] extends Logging {
    */
   protected def maybeSpill(collection: C, currentMemory: Long): Boolean = {
     var shouldSpill = false
+    //写入的数据是32的倍数且当前内存空间大于myMemoryThreshold这个值，则进行判断是否shouldSpill，这只是条件的一种
     if (elementsRead % 32 == 0 && currentMemory >= myMemoryThreshold) {
       // Claim up to double our current memory from the shuffle memory pool
+      //要申请的空间
       val amountToRequest = 2 * currentMemory - myMemoryThreshold
+      //申请到的空间，经常会小于你要申请的空间，这里是通过UnifiedMemoryManager来实现的
       val granted =
         taskMemoryManager.acquireExecutionMemory(amountToRequest, MemoryMode.ON_HEAP, null)
       myMemoryThreshold += granted
       // If we were granted too little memory to grow further (either tryToAcquire returned 0,
       // or we already had more memory than myMemoryThreshold), spill the current collection
+      //如果当前使用的内存大于设定的myMemoryThreshold这个值，则应该把数据spill到磁盘上
       shouldSpill = currentMemory >= myMemoryThreshold
     }
     shouldSpill = shouldSpill || _elementsRead > numElementsForceSpillThreshold
     // Actually spill
     if (shouldSpill) {
+      //满足条件 则进行spill，并释放缓存，之后的操作会new一个map或者buffer
       _spillCount += 1
       logSpillage(currentMemory)
+      //进行spill操作
       spill(collection)
       _elementsRead = 0
       _memoryBytesSpilled += currentMemory
