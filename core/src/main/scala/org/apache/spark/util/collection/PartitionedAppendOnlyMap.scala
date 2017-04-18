@@ -31,7 +31,7 @@ private[spark] class PartitionedAppendOnlyMap[K, V]
   def partitionedDestructiveSortedIterator(keyComparator: Option[Comparator[K]])
     : Iterator[((Int, K), V)] = {
     //先它这里会构造一个按partition和key进行比较的比较器，这个比较器先按partition来排序，
-    // 然后再用key的hashcode进行排序，记住这里spark系统是进行key排序了的，而不是没有排序，只是它这里是按照key的hashcode进行的排序。
+    //然后再用key的hashcode进行排序，记住这里spark系统是进行key排序了的，而不是没有排序，只是它这里是按照key的hashcode进行的排序。
     val comparator = keyComparator.map(partitionKeyComparator).getOrElse(partitionComparator)
     //后通过这个比较器再对这个map进行排序
     destructiveSortedIterator(comparator)

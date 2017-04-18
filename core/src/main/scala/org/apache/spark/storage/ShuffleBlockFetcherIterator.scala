@@ -145,12 +145,16 @@ final class ShuffleBlockFetcherIterator(
     bytesInFlight += req.size
 
     // so we can look up the size of each blockID
+    //首先获得要fetch的blocks的信息
     val sizeMap = req.blocks.map { case (blockId, size) => (blockId.toString, size) }.toMap
     val blockIds = req.blocks.map(_._1.toString)
 
     val address = req.address
+    // 然后通过shuffleClient的fetchBlocks方法来获取对应远程节点上的数据
+    // 默认是通过NettyBlockTransferService的fetchBlocks方法实现的
     shuffleClient.fetchBlocks(address.host, address.port, address.executorId, blockIds.toArray,
       new BlockFetchingListener {
+        // 最后，不管成功还是失败，都将结果保存在results中
         override def onBlockFetchSuccess(blockId: String, buf: ManagedBuffer): Unit = {//请求成功
           // Only add the buffer to results queue if the iterator is not zombie,
           // i.e. cleanup() has not been called yet.
@@ -177,6 +181,7 @@ final class ShuffleBlockFetcherIterator(
     // Make remote requests at most maxBytesInFlight / 5 in length; the reason to keep them
     // smaller than maxBytesInFlight is to allow multiple, parallel fetches from up to 5
     // nodes, rather than blocking on reading output from one node.
+    // 为了将大小控制在maxBytesInFlight以下，可以增加并行度，即从1个节点增加到5个
     val targetRequestSize = math.max(maxBytesInFlight / 5, 1L)
     logDebug("maxBytesInFlight: " + maxBytesInFlight + ", targetRequestSize: " + targetRequestSize)
 
@@ -188,6 +193,7 @@ final class ShuffleBlockFetcherIterator(
     var totalBlocks = 0
     for ((address, blockInfos) <- blocksByAddress) {
       totalBlocks += blockInfos.size
+      // 这里就是判断所要获取的是本地的block还是远程的block
       if (address.executorId == blockManager.blockManagerId.executorId) {//本地获取 local
         // Filter out zero-sized blocks
         //Block在本地，需要过滤大小为0的Block
@@ -209,9 +215,9 @@ final class ShuffleBlockFetcherIterator(
           } else if (size < 0) {
             throw new BlockException(blockId, "Negative block size " + size)
           }
+          // 满足大小的限制就构建一个FetchRequest并加入到remoteRequests中
           if (curRequestSize >= targetRequestSize) {
             // Add this FetchRequest
-            //当前总的Size已经可以批量放入一次Request中
             remoteRequests += new FetchRequest(address, curBlocks)
             curBlocks = new ArrayBuffer[(BlockId, Long)]
             logDebug(s"Creating fetch request of $curRequestSize at $address")
@@ -219,7 +225,7 @@ final class ShuffleBlockFetcherIterator(
           }
         }
         // Add in the final request
-        //剩余的请求组成一次Request
+        //剩余的请求组成一次remoteRequests
         if (curBlocks.nonEmpty) {
           remoteRequests += new FetchRequest(address, curBlocks)
         }
@@ -256,21 +262,26 @@ final class ShuffleBlockFetcherIterator(
 
   private[this] def initialize(): Unit = {
     // Add a task completion callback (called in both success case and failure case) to cleanup.
+    // 不管最后task是success还是failure，都要进行cleanup操作
     context.addTaskCompletionListener(_ => cleanup())
 
     // Split local and remote blocks.
     //这里会将本地的数据封装到本地请求块ArrayBuffer[BlockId]，返回的为需要远程请求的块，数据结构为ArrayBuffer[FetchRequest]
     val remoteRequests = splitLocalRemoteBlocks()
     // Add the remote requests into our queue in a random order
+    // 这里的fetchRequests是一个队列，我们将远程的请求以随机的顺序加入到该队列，然后使用下面的
+    // fetchUpToMaxBytes方法取出队列中的远程请求，同时对大小进行限制
     fetchRequests ++= Utils.randomize(remoteRequests)
 
     // Send out initial requests for blocks, up to our maxBytesInFlight
+    // 从fetchRequests取出远程请求，并使用sendRequest方法发送请求
     fetchUpToMaxBytes()
 
     val numFetches = remoteRequests.size - fetchRequests.size
     logInfo("Started " + numFetches + " remote fetches in" + Utils.getUsedTimeMs(startTime))
 
     // Get Local Blocks
+    // 获取本地的Blocks
     fetchLocalBlocks()
     logDebug("Got local blocks in " + Utils.getUsedTimeMs(startTime))
   }
@@ -298,7 +309,7 @@ final class ShuffleBlockFetcherIterator(
       case _ =>
     }
     // Send fetch requests up to maxBytesInFlight
-    //之前的远程请求获取Block时，一小部分可能就达到了maxBytesInFlight，所以很有可能剩余很多请求没有发送，这里附加动作用于发送剩余请求
+    // 这里就是关键的代码，即不断的去抓去数据，直到抓去到所有的数据
     fetchUpToMaxBytes()
 
     result match {

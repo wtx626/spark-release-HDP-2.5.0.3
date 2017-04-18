@@ -149,8 +149,10 @@ private[spark] abstract class MapOutputTracker(conf: SparkConf) extends Logging 
   def getMapSizesByExecutorId(shuffleId: Int, startPartition: Int, endPartition: Int)
       : Seq[(BlockManagerId, Seq[(BlockId, Long)])] = {
     logDebug(s"Fetching outputs for shuffle $shuffleId, partitions $startPartition-$endPartition")
+    // 获得Map阶段输出的中间计算结果的元数据信息
     val statuses = getStatuses(shuffleId)
     // Synchronize on the returned array because, on the driver, it gets mutated in place
+    // 将获得的元数据信息转化成形如Seq[(BlockManagerId, Seq[(BlockId, Long)])]格式的位置信息，用来读取指定的Map阶段产生的数据
     statuses.synchronized {
       return MapOutputTracker.convertMapStatuses(shuffleId, startPartition, endPartition, statuses)
     }
@@ -180,10 +182,13 @@ private[spark] abstract class MapOutputTracker(conf: SparkConf) extends Logging 
    * (It would be nice to remove this restriction in the future.)
    */
   private def getStatuses(shuffleId: Int): Array[MapStatus] = {
+    // 根据shuffleId获得MapStatus组成的数组：Array[MapStatus]
     val statuses = mapStatuses.get(shuffleId).orNull
     if (statuses == null) {
+      //如果没有获取就进行fetch操作
       logInfo("Don't have map outputs for shuffle " + shuffleId + ", fetching them")
       val startTime = System.currentTimeMillis
+      // 用来保存fetch来的MapStatus
       var fetchedStatuses: Array[MapStatus] = null
       fetching.synchronized {
         // Someone else is fetching it; wait for them to be done
@@ -206,15 +211,17 @@ private[spark] abstract class MapOutputTracker(conf: SparkConf) extends Logging 
       }
 
       if (fetchedStatuses == null) {
+        // 如果得到了fetch的权利就进行抓取
         // We won the race to fetch the statuses; do so
         logInfo("Doing the fetch; tracker endpoint = " + trackerEndpoint)
         // This try-finally prevents hangs due to timeouts:
         try {
-          //向MapOutputTrackerMaster发送请求获取MapOutputStatus消息
+          // 调用askTracker方法发送消息，消息的格式为GetMapOutputStatuses(shuffleId)
           val fetchedBytes = askTracker[Array[Byte]](GetMapOutputStatuses(shuffleId))
           //MapOutputTrackerMaster返回元数据信息并逆序列化
           fetchedStatuses = MapOutputTracker.deserializeMapStatuses(fetchedBytes)
           logInfo("Got the output locations")
+          // 保存到本地的mapStatuses中
           mapStatuses.put(shuffleId, fetchedStatuses)
         } finally {
           fetching.synchronized {
@@ -227,6 +234,7 @@ private[spark] abstract class MapOutputTracker(conf: SparkConf) extends Logging 
         s"${System.currentTimeMillis - startTime} ms")
 
       if (fetchedStatuses != null) {
+        // 最后将抓取到的元数据信息返回
         return fetchedStatuses
       } else {
         logError("Missing all output locations for shuffle " + shuffleId)
@@ -234,6 +242,7 @@ private[spark] abstract class MapOutputTracker(conf: SparkConf) extends Logging 
           shuffleId, -1, "Missing all output locations for shuffle " + shuffleId)
       }
     } else {
+      // 如果获取到了Array[MapStatus]就直接返回
       return statuses
     }
   }

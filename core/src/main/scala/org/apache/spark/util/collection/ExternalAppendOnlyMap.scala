@@ -275,10 +275,11 @@ class ExternalAppendOnlyMap[K, V, C](
 
     // Input streams are derived both from the in-memory map and spilled maps on disk
     // The in-memory map is sorted in place, while the spilled maps are already in sorted order
+    // 按照key的hashcode进行排序
     private val sortedMap = CompletionIterator[(K, C), Iterator[(K, C)]](
       currentMap.destructiveSortedIterator(keyComparator), freeCurrentMap())
     private val inputStreams = (Seq(sortedMap) ++ spilledMaps).map(it => it.buffered)
-
+    // 不断迭代，直到将所有数据都读出来，最后将所有的数据保存在mergeHeap中
     inputStreams.foreach { it =>
       val kcPairs = new ArrayBuffer[(K, C)]
       readNextHashCode(it, kcPairs)
