@@ -1,0 +1,10 @@
+F:\IdeaProject\spark-release-HDP-2.5.0.3-tag\network\shuffle\src\test\java\org\apache\spark\network\shuffle\OneForOneBlockFetcherSuite.java
+F:\IdeaProject\spark-release-HDP-2.5.0.3-tag\network\shuffle\src\test\java\org\apache\spark\network\shuffle\ExternalShuffleSecuritySuite.java
+F:\IdeaProject\spark-release-HDP-2.5.0.3-tag\network\shuffle\src\test\java\org\apache\spark\network\sasl\SaslIntegrationSuite.java
+F:\IdeaProject\spark-release-HDP-2.5.0.3-tag\network\shuffle\src\test\java\org\apache\spark\network\shuffle\ExternalShuffleBlockHandlerSuite.java
+F:\IdeaProject\spark-release-HDP-2.5.0.3-tag\network\shuffle\src\test\java\org\apache\spark\network\shuffle\ExternalShuffleBlockResolverSuite.java
+F:\IdeaProject\spark-release-HDP-2.5.0.3-tag\network\shuffle\src\test\java\org\apache\spark\network\shuffle\ExternalShuffleCleanupSuite.java
+F:\IdeaProject\spark-release-HDP-2.5.0.3-tag\network\shuffle\src\test\java\org\apache\spark\network\shuffle\BlockTransferMessagesSuite.java
+F:\IdeaProject\spark-release-HDP-2.5.0.3-tag\network\shuffle\src\test\java\org\apache\spark\network\shuffle\ExternalShuffleIntegrationSuite.java
+F:\IdeaProject\spark-release-HDP-2.5.0.3-tag\network\shuffle\src\test\java\org\apache\spark\network\shuffle\RetryingBlockFetcherSuite.java
+F:\IdeaProject\spark-release-HDP-2.5.0.3-tag\network\shuffle\src\test\java\org\apache\spark\network\shuffle\TestShuffleDataContext.java

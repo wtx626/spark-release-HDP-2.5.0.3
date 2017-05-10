@@ -60,7 +60,7 @@ private[spark] class DiskBlockObjectWriter(
    * Cursors used to represent positions in the file.
    *
    * xxxxxxxx|--------|---       |
-   *         ^        ^          ^
+   *         ^        ^          &#94;
    *         |        |        finalPosition
    *         |      reportedPosition
    *       initialPosition

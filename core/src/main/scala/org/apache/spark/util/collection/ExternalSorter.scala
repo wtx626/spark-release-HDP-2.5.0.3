@@ -472,6 +472,7 @@ private[spark] class ExternalSorter[K, V, C](
           // equal by the partial order; we flatten this below to get a flat iterator of (K, C).
           keys.iterator.zip(combiners.iterator)
         }
+
         //关于这个flatMap操作就是把操作各个partition数据的iterater连接到一起
       }.flatMap(i => i)
     } else {

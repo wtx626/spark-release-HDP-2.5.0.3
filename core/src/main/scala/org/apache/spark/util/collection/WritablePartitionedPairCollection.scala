@@ -83,10 +83,12 @@ private[spark] object WritablePartitionedPairCollection {
     //比较器按照先分区后key
     new Comparator[(Int, K)] {
       override def compare(a: (Int, K), b: (Int, K)): Int = {
+        //分区
         val partitionDiff = a._1 - b._1
         if (partitionDiff != 0) {
           partitionDiff
         } else {
+          //key
           keyComparator.compare(a._2, b._2)
         }
       }

@@ -1,0 +1,14 @@
+F:\IdeaProject\spark-release-HDP-2.5.0.3-tag\unsafe\src\main\java\org\apache\spark\unsafe\memory\MemoryBlock.java
+F:\IdeaProject\spark-release-HDP-2.5.0.3-tag\unsafe\src\main\java\org\apache\spark\unsafe\array\ByteArrayMethods.java
+F:\IdeaProject\spark-release-HDP-2.5.0.3-tag\unsafe\src\main\java\org\apache\spark\unsafe\types\ByteArray.java
+F:\IdeaProject\spark-release-HDP-2.5.0.3-tag\unsafe\src\main\java\org\apache\spark\unsafe\bitset\BitSetMethods.java
+F:\IdeaProject\spark-release-HDP-2.5.0.3-tag\unsafe\src\main\java\org\apache\spark\unsafe\KVIterator.java
+F:\IdeaProject\spark-release-HDP-2.5.0.3-tag\unsafe\src\main\java\org\apache\spark\unsafe\Platform.java
+F:\IdeaProject\spark-release-HDP-2.5.0.3-tag\unsafe\src\main\java\org\apache\spark\unsafe\types\UTF8String.java
+F:\IdeaProject\spark-release-HDP-2.5.0.3-tag\unsafe\src\main\java\org\apache\spark\unsafe\memory\HeapMemoryAllocator.java
+F:\IdeaProject\spark-release-HDP-2.5.0.3-tag\unsafe\src\main\java\org\apache\spark\unsafe\hash\Murmur3_x86_32.java
+F:\IdeaProject\spark-release-HDP-2.5.0.3-tag\unsafe\src\main\java\org\apache\spark\unsafe\array\LongArray.java
+F:\IdeaProject\spark-release-HDP-2.5.0.3-tag\unsafe\src\main\java\org\apache\spark\unsafe\memory\MemoryAllocator.java
+F:\IdeaProject\spark-release-HDP-2.5.0.3-tag\unsafe\src\main\java\org\apache\spark\unsafe\memory\UnsafeMemoryAllocator.java
+F:\IdeaProject\spark-release-HDP-2.5.0.3-tag\unsafe\src\main\java\org\apache\spark\unsafe\types\CalendarInterval.java
+F:\IdeaProject\spark-release-HDP-2.5.0.3-tag\unsafe\src\main\java\org\apache\spark\unsafe\memory\MemoryLocation.java

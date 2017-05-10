@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<project name="maven-antrun-" default="main"  >
+<target name="main">
+  <mkdir dir="F:\IdeaProject\spark-release-HDP-2.5.0.3-tag\network\shuffle\target/tmp"/>
+</target>
+</project>
