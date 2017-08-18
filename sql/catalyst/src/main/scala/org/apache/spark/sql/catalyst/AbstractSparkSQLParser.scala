@@ -30,13 +30,16 @@ private[sql] abstract class AbstractSparkSQLParser
 
   def parse(input: String): LogicalPlan = synchronized {
     // Initialize the Keywords.
+    //初始化词法 初始化关键字
     initLexical
+    //根据获取的关键字，对sql语句解析，最终获得logical plan
     phrase(start)(new lexical.Scanner(input)) match {
       case Success(plan, _) => plan
       case failureOrError => sys.error(failureOrError.toString)
     }
   }
   /* One time initialization of lexical.This avoid reinitialization of  lexical in parse method */
+  //上面初始化是调用这里，而这里的参数是获取reservedWords的函数
   protected lazy val initLexical: Unit = lexical.initialize(reservedWords)
 
   protected case class Keyword(str: String) {

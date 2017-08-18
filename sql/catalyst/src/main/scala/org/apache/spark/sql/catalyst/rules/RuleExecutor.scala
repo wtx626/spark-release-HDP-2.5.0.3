@@ -66,6 +66,8 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
    * Executes the batches of rules defined by the subclass. The batches are executed serially
    * using the defined execution strategy. Within each batch, rules are also executed serially.
    */
+  //执行被这个类的子类（Analyzer）定义的batches（也就Analyzer.scala中提到的那些batches），batches中的batch会一个接一个的被调用
+  //使用batch中定义的策略（Once，FixedPoint），rules中的rule也会一个接一个的被调用
   def execute(plan: TreeType): TreeType = {
     var curPlan = plan
 

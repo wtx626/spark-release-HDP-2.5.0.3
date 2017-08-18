@@ -64,6 +64,7 @@ private[spark] class DefaultParserDialect extends ParserDialect {
   protected val sqlParser = SqlParser
 
   override def parse(sqlText: String): LogicalPlan = {
+    //最终select语句执行的代码
     sqlParser.parse(sqlText)
   }
 }

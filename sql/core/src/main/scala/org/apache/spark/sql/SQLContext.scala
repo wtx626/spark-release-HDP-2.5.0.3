@@ -204,12 +204,14 @@ class SQLContext private[sql](
   @transient
   protected[sql] lazy val optimizer: Optimizer = DefaultOptimizer(conf)
 
+  //这里就是new 这个SparkSQLParser的地方
   @transient
   protected[sql] val ddlParser = new DDLParser(sqlParser.parse(_))
 
   @transient
   protected[sql] val sqlParser = new SparkSQLParser(getSQLDialect().parse(_))
 
+  //下面这个方法就是通过反射的方法来构建的传入的那个对象
   protected[sql] def getSQLDialect(): ParserDialect = {
     try {
       val clazz = Utils.classForName(dialectClassName)
@@ -237,6 +239,7 @@ class SQLContext private[sql](
     new sparkexecution.QueryExecution(this, plan)
 
   protected[sql] def dialectClassName = if (conf.dialect == "sql") {
+    //这里它会执行这个if语句，因为conf.dialect默认就是"sql"
     classOf[DefaultParserDialect].getCanonicalName
   } else {
     conf.dialect

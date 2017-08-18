@@ -124,6 +124,7 @@ object SqlParser extends AbstractSparkSQLParser with DataTypeParser {
     )
 
   protected lazy val select: Parser[LogicalPlan] =
+    //到这里他才匹配到这个SELECT关键字
     SELECT ~> DISTINCT.? ~
       repsep(projection, ",") ~
       (FROM   ~> relations).? ~
@@ -156,6 +157,7 @@ object SqlParser extends AbstractSparkSQLParser with DataTypeParser {
     }
 
   protected lazy val projection: Parser[Expression] =
+    //先是匹配到这里
     expression ~ (AS.? ~> ident.?) ^^ {
       case e ~ a => a.fold(e)(Alias(e, _)())
     }

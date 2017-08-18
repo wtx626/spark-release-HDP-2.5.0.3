@@ -37,9 +37,12 @@ class DDLParser(parseQuery: String => LogicalPlan)
 
   def parse(input: String, exceptionOnError: Boolean): LogicalPlan = {
     try {
+      //上面的异常是通过，下面这句代码产生的
       parse(input)
     } catch {
       case ddlException: DDLException => throw ddlException
+        //根据的抛出的异常是sys.error(failureOrError.toString)，它抛出的是RuntimeException，所以不会匹配到上面的ddlException，
+        //因此会执行下面这句话，另外由于exceptionOnError刚开始指定的是false，所以直接执行parseQuery
       case _ if !exceptionOnError => parseQuery(input)
       case x: Throwable => throw x
     }
