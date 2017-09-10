@@ -49,9 +49,12 @@ abstract class LogicalPlan extends QueryPlan[LogicalPlan] with Logging {
    *
    * @param rule the function use to transform this nodes children
    */
+  //优先处理它的子节点，然后再处理自己，其实说白了就是树的递归调用。唯一需要注意的是，他会忽略掉已经处理过的子节点.
   def resolveOperators(rule: PartialFunction[LogicalPlan, LogicalPlan]): LogicalPlan = {
     if (!analyzed) {
+      //处理它的子节点，这个transformChildren大家自己看一下，其实很简单，就是一个递归调用
       val afterRuleOnChildren = transformChildren(rule, (t, r) => t.resolveOperators(r))
+      //如果处理后的LogicalPlan和这一次的相等就说明他没有子节点了，则处理它自己
       if (this fastEquals afterRuleOnChildren) {
         CurrentOrigin.withOrigin(origin) {
           rule.applyOrElse(this, identity[LogicalPlan])

@@ -302,8 +302,10 @@ class Analyzer(
     * Replaces [[UnresolvedRelation]]s with concrete relations from the catalog.
     */
   object ResolveRelations extends Rule[LogicalPlan] {
+    //下面这个rule的作用就是通过table从catalog中获取相应的relation
     def getTable(u: UnresolvedRelation): LogicalPlan = {
       try {
+        //获取table中的关系
         catalog.lookupRelation(u.tableIdentifier, u.alias)
       } catch {
         case _: NoSuchTableException =>

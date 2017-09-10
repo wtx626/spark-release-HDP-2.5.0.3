@@ -79,14 +79,17 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
 
       // Run until fix point (or the max number of iterations as specified in the strategy.
       while (continue) {
+        //调用rules中每一个rule 作用于计划
         curPlan = batch.rules.foldLeft(curPlan) {
           case (plan, rule) =>
             val startTime = System.nanoTime()
+            //调用rule递归对整个tree进行处理
             val result = rule(plan)
             val runTime = System.nanoTime() - startTime
             RuleExecutor.timeMap.addAndGet(rule.ruleName, runTime)
 
             if (!result.fastEquals(plan)) {
+              //如果处理后的plan有变化，就打印相关信息
               logTrace(
                 s"""
                   |=== Applying Rule ${rule.ruleName} ===
@@ -96,7 +99,9 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
 
             result
         }
+        //batch迭代次数+1
         iteration += 1
+        //如果迭代次数大于最大值，就停止
         if (iteration > batch.strategy.maxIterations) {
           // Only log if this is a rule that is supposed to run more than once.
           if (iteration != 2) {
@@ -105,6 +110,7 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
           continue = false
         }
 
+        //如果处理的plan没变化，也停止
         if (curPlan.fastEquals(lastPlan)) {
           logTrace(
             s"Fixed point reached for batch ${batch.name} after ${iteration - 1} iterations.")
@@ -113,6 +119,7 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
         lastPlan = curPlan
       }
 
+      //如果处理的plan有变化，打印相关信息
       if (!batchStartPlan.fastEquals(curPlan)) {
         logDebug(
           s"""
@@ -126,4 +133,5 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
 
     curPlan
   }
+  //这里的分析阶段完成了sql语句和数据库相关信息的绑定
 }
