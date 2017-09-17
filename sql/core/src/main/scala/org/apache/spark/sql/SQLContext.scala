@@ -817,6 +817,7 @@ class SQLContext private[sql](
    * @since 1.3.0
    */
   def sql(sqlText: String): DataFrame = {
+    //这里我们已经获得了Unresolved LogicalPlan
     DataFrame(this, parseSql(sqlText))
   }
 
@@ -898,7 +899,9 @@ class SQLContext private[sql](
   @transient
   protected[sql] val prepareForExecution = new RuleExecutor[SparkPlan] {
     val batches = Seq(
+      //用来协调shuffle的方法
       Batch("Add exchange", Once, EnsureRequirements(self)),
+      //确保row 的formats，因为处理的row有可能是SafeRows和UnsafeRows，这里需要将处理的记录和相应的格式匹配起来
       Batch("Add row converters", Once, EnsureRowFormats)
     )
   }

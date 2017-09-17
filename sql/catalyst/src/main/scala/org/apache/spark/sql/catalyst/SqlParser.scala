@@ -470,7 +470,7 @@ object SqlParser extends AbstractSparkSQLParser with DataTypeParser {
   }
 
   protected lazy val baseExpression: Parser[Expression] =
-    ( "*" ^^^ UnresolvedStar(None)
+    ( "*" ^^^ UnresolvedStar(None)//.如果左边的算子成功，取消左边算子的结果，返回右边算子
     | rep1(ident <~ ".") <~ "*" ^^ { case target => UnresolvedStar(Option(target))}
     | primary
    )

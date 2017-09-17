@@ -126,13 +126,16 @@ private[sql] class JSONRelation(
       filters: Array[Filter],
       inputPaths: Array[FileStatus],
       broadcastedConf: Broadcast[SerializableConfiguration]): RDD[InternalRow] = {
+    // 获取需要处理的列的Schema信息，其实就是其对应的类型。
     val requiredDataSchema = StructType(requiredColumns.map(dataSchema(_)))
+    //这里就是根据requiredDataSchema将json格式的数据转化为InternalRow
     val rows = JacksonParser.parse(
       inputRDD.getOrElse(createBaseRdd(inputPaths)),
       requiredDataSchema,
       sqlContext.conf.columnNameOfCorruptRecord,
       options)
 
+    //最后将rdd中InternalRow转化为UnsafeRow，因为UnsafeRow的数据是直接放在内存上的，而不是java对象
     rows.mapPartitions { iterator =>
       val unsafeProjection = UnsafeProjection.create(requiredDataSchema)
       iterator.map(unsafeProjection)

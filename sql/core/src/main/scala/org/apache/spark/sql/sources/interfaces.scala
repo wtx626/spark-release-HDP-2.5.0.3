@@ -644,6 +644,9 @@ abstract class HadoopFsRelation private[sql](
       filters: Array[Filter],
       inputPaths: Array[String],
       broadcastedConf: Broadcast[SerializableConfiguration]): RDD[InternalRow] = {
+    //据上面的处理中得到的inputPaths，来获取数据的位置
+    //他先认为这个路径是一个目录，读取该目录下的文件进行处理
+    //而后才会处理它是是一个文件
     val inputStatuses = inputPaths.flatMap { input =>
       val path = new Path(input)
 
@@ -658,6 +661,7 @@ abstract class HadoopFsRelation private[sql](
       }
     }
 
+    //然后就是通过这个文件来构建rdd
     buildInternalScan(requiredColumns, filters, inputStatuses, broadcastedConf)
   }
 

@@ -40,6 +40,7 @@ class QueryExecution(val sqlContext: SQLContext, val logical: LogicalPlan) {
     sqlContext.cacheManager.useCachedData(analyzed)
   }
 
+  //withCachedData即为解析完之后的logicalPlan
   lazy val optimizedPlan: LogicalPlan = sqlContext.optimizer.execute(withCachedData)
 
   lazy val sparkPlan: SparkPlan = {

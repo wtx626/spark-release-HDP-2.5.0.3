@@ -184,6 +184,8 @@ case class UnresolvedStar(target: Option[Seq[String]]) extends Star with Unevalu
     // First try to expand assuming it is table.*.
     val expandedAttributes: Seq[Attribute] = target match {
       // If there is no table specified, use all input attributes.
+        //通过前面我们得知这里的这个target其实就是我们上面图中得到的      UnresolvedStar(None)
+        //所以最终匹配的是这里
       case None => input.output
       // If there is a table, pick out attributes that are part of this table.
       case Some(t) => if (t.size == 1) {

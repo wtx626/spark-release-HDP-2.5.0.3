@@ -34,37 +34,49 @@ import org.apache.spark.sql.types._
 abstract class Optimizer(conf: CatalystConf) extends RuleExecutor[LogicalPlan] {
   val batches =
     // SubQueries are only needed for analysis and can be removed before execution.
+    //删除子查询
     Batch("Remove SubQueries", FixedPoint(100),
       EliminateSubQueries) ::
+    //合并
     Batch("Aggregate", FixedPoint(100),
+      //重写了包含所有Distinct的合并
       DistinctAggregationRewriter(conf),
       ReplaceDistinctWithAggregate,
+      //去除一些group操作中foldable的表达式
       RemoveLiteralFromGroupExpressions) ::
     Batch("Operator Optimizations", FixedPoint(100),
       // Operator push down
       SetOperationPushDown,
       SamplePushDown,
+      //谓词下推
       PushPredicateThroughJoin,
       PushPredicateThroughProject,
       PushPredicateThroughGenerate,
       PushPredicateThroughAggregate,
+      //列剪枝
       ColumnPruning,
       // Operator combine
       ProjectCollapsing,
       CombineFilters,
       CombineLimits,
       // Constant folding
+      //空格处理
       NullPropagation,
+      //关键字In的优化，替代为Inset
       OptimizeIn,
+      //常量叠加
       ConstantFolding,
+      //表达式简化
       LikeSimplification,
       BooleanSimplification,
       RemoveDispensableExpressions,
       SimplifyFilters,
       SimplifyCasts,
       SimplifyCaseConversionExpressions) ::
+    //精度优化
     Batch("Decimal Optimizations", FixedPoint(100),
       DecimalAggregates) ::
+    //关系转换
     Batch("LocalRelation", FixedPoint(100),
       ConvertToLocalRelation) :: Nil
 }

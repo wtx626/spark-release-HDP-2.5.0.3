@@ -66,7 +66,7 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
    * Executes the batches of rules defined by the subclass. The batches are executed serially
    * using the defined execution strategy. Within each batch, rules are also executed serially.
    */
-  //执行被这个类的子类（Analyzer）定义的batches（也就Analyzer.scala中提到的那些batches），batches中的batch会一个接一个的被调用
+  //执行这个类的子类（Analyzer）定义的batches（也就Analyzer.scala中提到的那些batches），batches中的batch会一个接一个的被调用
   //使用batch中定义的策略（Once，FixedPoint），rules中的rule也会一个接一个的被调用
   def execute(plan: TreeType): TreeType = {
     var curPlan = plan
@@ -80,10 +80,13 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
       // Run until fix point (or the max number of iterations as specified in the strategy.
       while (continue) {
         //调用rules中每一个rule 作用于计划
+        //flodLeft是柯里化的一种实现
+        // 这个result就是curPlan，而这句代码的最终实现就是依次是用rules中的rule和curPlan来当作传入参数。
         curPlan = batch.rules.foldLeft(curPlan) {
           case (plan, rule) =>
             val startTime = System.nanoTime()
             //调用rule递归对整个tree进行处理
+            //这里很显然他是调用了这个rule的apply方法
             val result = rule(plan)
             val runTime = System.nanoTime() - startTime
             RuleExecutor.timeMap.addAndGet(rule.ruleName, runTime)

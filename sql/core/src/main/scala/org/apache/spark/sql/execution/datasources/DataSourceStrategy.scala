@@ -124,6 +124,8 @@ private[sql] object DataSourceStrategy extends Strategy with Logging {
       val sharedHadoopConf = SparkHadoopUtil.get.conf
       val confBroadcast =
         t.sqlContext.sparkContext.broadcast(new SerializableConfiguration(sharedHadoopConf))
+      //这里最关键的是这个函数，它的作用就是再修剪Optimized LogicalPlan，并和datasource（mysql，json文件，Parquet文件）绑定。
+      //这里它修剪的就是project和filter。
       pruneFilterProject(
         l,
         projects,
@@ -313,18 +315,24 @@ private[sql] object DataSourceStrategy extends Strategy with Logging {
     filterPredicates: Seq[Expression],
     scanBuilder: (Seq[Attribute], Seq[Expression], Seq[Filter]) => RDD[InternalRow]) = {
 
+    //里获得的这个projectSet，就是Optimized LogicalPlan中project的参数，即age#0L,name#1
     val projectSet = AttributeSet(projects.flatMap(_.references))
+    //这里获取的就是过滤条件的参数，在这个例子中是age#0L
     val filterSet = AttributeSet(filterPredicates.flatMap(_.references))
 
+    //过滤出谓词的如between，like，在这个例子中是age#0L>0
+    //所谓谓词，就是取值为 TRUE、FALSE 或 UNKNOWN 的表达式。谓词用于 WHERE子句和 HAVING子句的搜索条件中，还用于 FROM 子句的联接条件以及需要布尔值的其他构造中
     val candidatePredicates = filterPredicates.map { _ transform {
       case a: AttributeReference => relation.attributeMap(a) // Match original case of attributes.
     }}
 
+    //提取出没有被处理的处理的表达式，及其可转化的pushdown谓词。这里是（(age#0L > 10)，GreaterThan(age,10)）
     val (unhandledPredicates, pushedFilters) =
       selectFilters(relation.relation, candidatePredicates)
 
     // A set of column attributes that are only referenced by pushed down filters.  We can eliminate
     // them from requested columns.
+    //提取出仅用于pushdown的参数，这里是nil，因为它不需要再pushdown
     val handledSet = {
       val handledPredicates = filterPredicates.filterNot(unhandledPredicates.contains)
       val unhandledSet = AttributeSet(unhandledPredicates.flatMap(_.references))
@@ -334,8 +342,10 @@ private[sql] object DataSourceStrategy extends Strategy with Logging {
 
     // Combines all Catalyst filter `Expression`s that are either not convertible to data source
     // `Filter`s or cannot be handled by `relation`.
+    //合并不能转化为数据源中的表达式及没有被处理的filter，这里是Some((age#0L > 10))
     val filterCondition = unhandledPredicates.reduceLeftOption(expressions.And)
 
+    //获取元数据信息
     val metadata: Map[String, String] = {
       val pairs = ArrayBuffer.empty[(String, String)]
 
@@ -357,6 +367,8 @@ private[sql] object DataSourceStrategy extends Strategy with Logging {
       // When it is possible to just use column pruning to get the right projection and
       // when the columns of this projection are enough to evaluate all filter conditions,
       // just do a scan followed by a filter, with no extra project.
+      //当这个project的参数，足以来处理filter的条件，就直接，构建这个scan
+      //提取这些满足条件的参数，也就是列名
       val requestedColumns = projects
         // Safe due to if above.
         .asInstanceOf[Seq[Attribute]]
@@ -365,6 +377,8 @@ private[sql] object DataSourceStrategy extends Strategy with Logging {
         // Don't request columns that are only referenced by pushed filters.
         .filterNot(handledSet.contains)
 
+      //创建这个scan，其实就是创建一个PhysicalRDD，而这个PhysicalRDD是间接继承自SparkPlan
+      //另外这里也创建了一个真正的rdd，可以通过PhysicalRDD获取
       val scan = execution.PhysicalRDD.createFromDataSource(
         projects.map(_.toAttribute),
         scanBuilder(requestedColumns, candidatePredicates, pushedFilters),
@@ -372,6 +386,7 @@ private[sql] object DataSourceStrategy extends Strategy with Logging {
       filterCondition.map(execution.Filter(_, scan)).getOrElse(scan)
     } else {
       // Don't request columns that are only referenced by pushed filters.
+      //这里就是去掉仅仅用于pushdown的fileter，用于计算的还是要保留的
       val requestedColumns =
         (projectSet ++ filterSet -- handledSet).map(relation.attributeMap).toSeq
 

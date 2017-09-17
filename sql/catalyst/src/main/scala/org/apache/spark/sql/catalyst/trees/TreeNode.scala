@@ -255,14 +255,17 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
    * @param rule the function used to transform this nodes children
    */
   def transformDown(rule: PartialFunction[BaseType, BaseType]): BaseType = {
+    //这里先优化根节点，是先序遍历
     val afterRule = CurrentOrigin.withOrigin(origin) {
       rule.applyOrElse(this, identity[BaseType])
     }
 
     // Check if unchanged and then possibly return old copy to avoid gc churn.
     if (this fastEquals afterRule) {
+      //如果没有改变的话，它就直接返回rule，而不是每一次都会有产生一个afterRule，从而最终有可能导致gc
       transformChildren(rule, (t, r) => t.transformDown(r))
     } else {
+      //如果有改变，就操作它的子节点
       afterRule.transformChildren(rule, (t, r) => t.transformDown(r))
     }
   }

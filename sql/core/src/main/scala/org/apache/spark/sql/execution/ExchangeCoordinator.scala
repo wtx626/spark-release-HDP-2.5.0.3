@@ -109,6 +109,8 @@ private[sql] class ExchangeCoordinator(
    * Estimates partition start indices for post-shuffle partitions based on
    * mapOutputStatistics provided by all pre-shuffle stages.
    */
+  // 这个方法的意思，就是根据前面rdd计算得到的数据，来根据shuffle后的分区数来来决定这个rdd处理的数据属于哪个分区，
+  // 这里其实就是指定shuffle后的各个分区获取哪些数据
   private[sql] def estimatePartitionStartIndices(
       mapOutputStatistics: Array[MapOutputStatistics]): Array[Int] = {
     // If we have mapOutputStatistics.length < numExchange, it is because we do not submit
@@ -207,11 +209,13 @@ private[sql] class ExchangeCoordinator(
       var i = 0
       while (i < numExchanges) {
         val exchange = exchanges(i)
+        //这个方法前面已经讲的很透彻了，构建这个操作的依赖
         val shuffleDependency = exchange.prepareShuffleDependency()
         shuffleDependencies += shuffleDependency
         if (shuffleDependency.rdd.partitions.length != 0) {
           // submitMapStage does not accept RDD with 0 partition.
           // So, we will not submit this dependency.
+          //也就是根据前面的依赖，根据这个依赖来提交一个stage运行
           submittedStageFutures +=
             exchange.sqlContext.sparkContext.submitMapStage(shuffleDependency)
         }
@@ -239,6 +243,7 @@ private[sql] class ExchangeCoordinator(
       var k = 0
       while (k < numExchanges) {
         val exchange = exchanges(k)
+        //最终根据estimatePartitionStartIndices处理的结果来构建一个rdd
         val rdd =
           exchange.preparePostShuffleRDD(shuffleDependencies(k), partitionStartIndices)
         newPostShuffleRDDs.put(exchange, rdd)
@@ -247,6 +252,8 @@ private[sql] class ExchangeCoordinator(
       }
 
       // Finally, we set postShuffleRDDs and estimated.
+      //然后最终把获得的这些rdd放到postShuffleRDDs变量中，
+      //其实真正的shuffle操作是发生在这些newPostShuffleRDDs中的
       assert(postShuffleRDDs.isEmpty)
       assert(newPostShuffleRDDs.size() == numExchanges)
       postShuffleRDDs.putAll(newPostShuffleRDDs)
@@ -255,6 +262,7 @@ private[sql] class ExchangeCoordinator(
   }
 
   def postShuffleRDD(exchange: Exchange): ShuffledRowRDD = {
+    //通过这里可以得知这个操作中肯定把生成的RDD放到了这里面，而这也是实现exchange操作的关键代码。
     doEstimationIfNecessary()
 
     if (!postShuffleRDDs.containsKey(exchange)) {

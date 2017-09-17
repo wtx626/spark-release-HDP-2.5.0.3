@@ -25,8 +25,9 @@ import org.apache.spark.sql.execution.datasources.DataSourceStrategy
 class SparkPlanner(val sqlContext: SQLContext) extends SparkStrategies {
   val sparkContext: SparkContext = sqlContext.sparkContext
 
+  //指定运行时的partitions的个数
   def numPartitions: Int = sqlContext.conf.numShufflePartitions
-
+  //需要执行的策略
   def strategies: Seq[Strategy] =
     sqlContext.experimental.extraStrategies ++ (
       DataSourceStrategy ::

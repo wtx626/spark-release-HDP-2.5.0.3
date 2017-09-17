@@ -151,19 +151,23 @@ case class Union(children: Seq[SparkPlan]) extends SparkPlan {
  * terminal or is invoked using execute, we first take the limit on each partition, and then
  * repartition all the data to a single partition to compute the global limit.
  */
+
 case class Limit(limit: Int, child: SparkPlan)
   extends UnaryNode {
   // TODO: Implement a partition local limit, and use a strategy to generate the proper limit plan:
   // partition local limit -> exchange into one partition -> partition local limit again
 
   /** We must copy rows when sort based shuffle is on */
+  //这里指定是否使用sort based shuffle
   private def sortBasedShuffleOn = SparkEnv.get.shuffleManager.isInstanceOf[SortShuffleManager]
-
+  //输出的参数
   override def output: Seq[Attribute] = child.output
   override def outputPartitioning: Partitioning = SinglePartition
 
+  //如果你使用这个方法的话，它仅仅在driver上执行，直接返回结果
   override def executeCollect(): Array[InternalRow] = child.executeTake(limit)
 
+  //下面就是具体的执行了
   protected override def doExecute(): RDD[InternalRow] = {
     val rdd: RDD[_ <: Product2[Boolean, InternalRow]] = if (sortBasedShuffleOn) {
       child.execute().mapPartitionsInternal { iter =>

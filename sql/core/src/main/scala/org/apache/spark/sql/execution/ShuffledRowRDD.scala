@@ -115,9 +115,9 @@ class ShuffledRowRDD(
     var dependency: ShuffleDependency[Int, InternalRow, InternalRow],
     specifiedPartitionStartIndices: Option[Array[Int]] = None)
   extends RDD[InternalRow](dependency.rdd.context, Nil) {
-
+  //这里是获得shuffle前的数据分区
   private[this] val numPreShufflePartitions = dependency.partitioner.numPartitions
-
+  //这里是我们在估计的时候获得的indices
   private[this] val partitionStartIndices: Array[Int] = specifiedPartitionStartIndices match {
     case Some(indices) => indices
     case None =>
@@ -126,13 +126,17 @@ class ShuffledRowRDD(
       (0 until numPreShufflePartitions).toArray
   }
 
+  //这个用来合并的Partitioner
   private[this] val part: Partitioner =
     new CoalescedPartitioner(dependency.partitioner, partitionStartIndices)
 
+  //这个用来合并的Partitioner
   override def getDependencies: Seq[Dependency[_]] = List(dependency)
 
   override val partitioner: Option[Partitioner] = Some(part)
 
+  //这个操作的实现，根据indices来获得这个新的rdd的分区。
+  // 可以看出来，每个分区是由shuffle前的分区来构建的，这里它是通过CoalescedPartitioner来构建
   override def getPartitions: Array[Partition] = {
     assert(partitionStartIndices.length == part.numPartitions)
     Array.tabulate[Partition](partitionStartIndices.length) { i =>
